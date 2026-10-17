@@ -78,6 +78,9 @@ fun StatusMessage(text: String) {
     )
 }
 
+/** Address of a page on English Wikipedia, written out because the phone has no browser to link to. */
+fun wikipediaUrl(title: String) = "en.wikipedia.org/wiki/" + title.replace(' ', '_')
+
 fun Throwable.toUserMessage(): String = when (this) {
     is ArticleNotFoundException -> "That article doesn't exist."
     else -> "Can't reach Wikipedia. Check your connection and try again."

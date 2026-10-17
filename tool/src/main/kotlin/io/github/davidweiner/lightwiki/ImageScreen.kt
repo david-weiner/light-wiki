@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -73,20 +74,34 @@ class ImageScreen(sealedActivity: SealedLightActivity, private val image: Block.
                     is ImageViewModel.State.Loaded -> ZoomableImage(s.bitmap, image.alt)
                 }
             }
-            (image.caption ?: image.alt)?.let {
+            Column(
+                modifier = Modifier.padding(
+                    start = PageMargin.gridUnitsAsDp(),
+                    end = PageMargin.gridUnitsAsDp(),
+                    top = 1f.gridUnitsAsDp(),
+                    bottom = 1.5f.gridUnitsAsDp(),
+                ),
+            ) {
+                (image.caption ?: image.alt)?.let {
+                    LightText(
+                        text = it,
+                        variant = LightTextVariant.Detail,
+                        lighten = true,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                // Credit required by the image's license, with where to find the full details.
                 LightText(
-                    text = it,
+                    text = listOfNotNull(image.author, image.license).joinToString(" · "),
                     variant = LightTextVariant.Detail,
-                    lighten = true,
-                    maxLines = 4,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(
-                        start = PageMargin.gridUnitsAsDp(),
-                        end = PageMargin.gridUnitsAsDp(),
-                        top = 1f.gridUnitsAsDp(),
-                        bottom = 1.5f.gridUnitsAsDp(),
-                    ),
+                    modifier = Modifier.padding(top = 0.5f.gridUnitsAsDp()),
                 )
+                image.file?.let {
+                    LightText(text = wikipediaUrl(it), variant = LightTextVariant.Detail, lighten = true)
+                }
             }
         }
     }

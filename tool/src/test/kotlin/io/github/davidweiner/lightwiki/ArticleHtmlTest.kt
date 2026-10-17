@@ -10,8 +10,8 @@ class ArticleHtmlTest {
         <style>.x{color:red}</style>
         <div role="note" class="hatnote">For other uses, see <a href="/wiki/Thing_(disambiguation)">Thing</a>.</div>
         <table class="infobox"><tr><td class="infobox-image">
-          <img src="//upload.wikimedia.org/thumb/lead.jpg/250px-lead.jpg?utm_source=x" width="250"
-               srcset="//upload.wikimedia.org/thumb/lead.jpg/500px-lead.jpg 2x" alt="Lead">
+          <a href="/wiki/File:Lead_image.jpg" class="mw-file-description"><img src="//upload.wikimedia.org/thumb/lead.jpg/250px-lead.jpg?utm_source=x" width="250"
+               srcset="//upload.wikimedia.org/thumb/lead.jpg/500px-lead.jpg 2x" alt="Lead"></a>
           <img src="//upload.wikimedia.org/flag.png" width="20">
         </td></tr></table>
         <p>A <b>thing</b> is an <i>object</i> &amp; a <a href="/wiki/C%2B%2B" title="C++">C++</a> idea
@@ -41,6 +41,7 @@ class ArticleHtmlTest {
                     largeUrl = "https://upload.wikimedia.org/thumb/lead.jpg/500px-lead.jpg",
                     caption = null,
                     alt = "Lead",
+                    file = "File:Lead image.jpg",
                 ),
                 Block.Paragraph(
                     listOf(
@@ -56,7 +57,7 @@ class ArticleHtmlTest {
                     )
                 ),
                 Block.Heading("History", 2),
-                Block.Image("https://upload.wikimedia.org/old.jpg", null, "An old picture", null),
+                Block.Image("https://upload.wikimedia.org/old.jpg", null, "An old picture", null, file = "File:Old.jpg"),
                 Block.ListItem(listOf(Span("First point")), 1),
                 Block.ListItem(listOf(Span("Second")), 1),
                 Block.ListItem(listOf(Span("Nested point")), 2),
@@ -66,6 +67,30 @@ class ArticleHtmlTest {
             article.blocks,
         )
         assertEquals(listOf("History", "Legacy"), article.sections.map { it.title })
+    }
+
+    @Test
+    fun keepsOnlyFreelyLicensedImages() {
+        fun image(file: String?) = Block.Image("https://x/$file", null, null, null, file = file)
+        val blocks = listOf(
+            image("File:Free.jpg"),
+            image("File:Fair use logo.png"),
+            image("File:Unknown.jpg"),
+            image(null),
+            Block.Paragraph(listOf(Span("Text"))),
+        )
+        val licenses = mapOf(
+            "File:Free.jpg" to ImageLicense("CC BY-SA 4.0", "Jane Doe", nonFree = false),
+            "File:Fair use logo.png" to ImageLicense("Fair use", null, nonFree = true),
+        )
+
+        assertEquals(
+            listOf(
+                image("File:Free.jpg").copy(license = "CC BY-SA 4.0", author = "Jane Doe"),
+                Block.Paragraph(listOf(Span("Text"))),
+            ),
+            withImageLicenses(blocks, licenses),
+        )
     }
 
     @Test

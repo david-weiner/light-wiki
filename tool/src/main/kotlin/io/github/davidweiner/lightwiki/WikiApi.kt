@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 data class SearchResult(val title: String, val description: String?)
 
@@ -77,8 +79,54 @@ object WikiApi {
         if (response.error?.code == "missingtitle" || parsed == null || parsed.text.isBlank()) {
             throw ArticleNotFoundException(title)
         }
-        return withContext(Dispatchers.Default) { ArticleHtml.parse(parsed.title, parsed.text) }
+        val article = withContext(Dispatchers.Default) { ArticleHtml.parse(parsed.title, parsed.text) }
+        val files = article.blocks.mapNotNull { (it as? Block.Image)?.file }.distinct()
+        // If the license lookup fails, images are left out rather than shown without credit.
+        val licenses = runCatching { imageLicenses(files) }.getOrDefault(emptyMap())
+        return article.copy(blocks = ArticleHtml.withoutEmptySections(withImageLicenses(article.blocks, licenses)))
     }
+
+    /** Looks up license and author for image files, keyed by "File:Name.jpg". */
+    private suspend fun imageLicenses(files: List<String>): Map<String, ImageLicense> {
+        val result = mutableMapOf<String, ImageLicense>()
+        for (batch in files.chunked(50)) { // the API's limit per request
+            val response: QueryResponse = client.get(ENDPOINT) {
+                parameter("action", "query")
+                parameter("format", "json")
+                parameter("formatversion", "2")
+                parameter("prop", "imageinfo")
+                parameter("iiprop", "extmetadata")
+                parameter("iiextmetadatafilter", "LicenseShortName|Artist|Credit|NonFree")
+                parameter("titles", batch.joinToString("|"))
+            }.body()
+            val query = response.query ?: continue
+            // The API may rename titles (e.g. capitalization); map results back to what was asked.
+            val requestedName = query.normalized.associate { it.to to it.from }
+            for (page in query.pages) {
+                val meta = page.imageinfo.firstOrNull()?.extmetadata ?: continue
+                val info = ImageLicense(
+                    license = meta["LicenseShortName"]?.text(),
+                    author = (meta["Artist"] ?: meta["Credit"])?.text()?.take(160),
+                    nonFree = meta["NonFree"]?.text()?.let { it == "true" || it == "1" } == true,
+                )
+                result[page.title] = info
+                requestedName[page.title]?.let { result[it] = info }
+            }
+        }
+        return result
+    }
+
+    private val TAG = Regex("<[^>]*>")
+    private val SPACES = Regex("\\s+")
+
+    /** extmetadata values are HTML snippets (often a link to the author's page); keep the text. */
+    private fun MetaValue.text(): String? =
+        (value as? JsonPrimitive)?.content
+            ?.replace(TAG, " ")
+            ?.let(HtmlTokenizer::decodeEntities)
+            ?.replace(SPACES, " ")
+            ?.trim()
+            ?.ifEmpty { null }
 
     suspend fun download(url: String): ByteArray = client.get(url).readRawBytes()
 
@@ -86,13 +134,26 @@ object WikiApi {
     private data class QueryResponse(val query: Query? = null)
 
     @Serializable
-    private data class Query(val pages: List<Page> = emptyList())
+    private data class Query(
+        val pages: List<Page> = emptyList(),
+        val normalized: List<Normalized> = emptyList(),
+    )
+
+    @Serializable
+    private data class Normalized(val from: String = "", val to: String = "")
+
+    @Serializable
+    private data class ImageInfo(val extmetadata: Map<String, MetaValue> = emptyMap())
+
+    @Serializable
+    private data class MetaValue(val value: JsonElement? = null)
 
     @Serializable
     private data class Page(
         val title: String = "",
         val index: Int = 0,
         val description: String? = null,
+        val imageinfo: List<ImageInfo> = emptyList(),
     )
 
     @Serializable

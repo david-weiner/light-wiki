@@ -29,8 +29,36 @@ sealed interface Block {
 
     @Serializable
     @SerialName("img")
-    data class Image(val url: String, val largeUrl: String?, val caption: String?, val alt: String?) : Block
+    data class Image(
+        val url: String,
+        val largeUrl: String?,
+        val caption: String?,
+        val alt: String?,
+        /** The image's file page, e.g. "File:Moon.jpg". */
+        val file: String? = null,
+        /** Short license name, e.g. "CC BY-SA 4.0" or "Public domain". Null until checked. */
+        val license: String? = null,
+        val author: String? = null,
+    ) : Block {
+        /** Only images whose free license has been confirmed are shown. */
+        val canShow: Boolean get() = license != null
+    }
 }
+
+/** What Wikimedia says about one image file. */
+data class ImageLicense(val license: String?, val author: String?, val nonFree: Boolean)
+
+/**
+ * Attaches license details to each image and drops images that are not freely licensed
+ * (Wikipedia's fair-use images can't be reused here) or whose license couldn't be found.
+ */
+fun withImageLicenses(blocks: List<Block>, licenses: Map<String, ImageLicense>): List<Block> =
+    blocks.mapNotNull { block ->
+        if (block !is Block.Image) return@mapNotNull block
+        val info = block.file?.let(licenses::get) ?: return@mapNotNull null
+        if (info.nonFree || info.license.isNullOrBlank()) return@mapNotNull null
+        block.copy(license = info.license, author = info.author)
+    }
 
 data class Section(val title: String, val level: Int, val blockIndex: Int)
 

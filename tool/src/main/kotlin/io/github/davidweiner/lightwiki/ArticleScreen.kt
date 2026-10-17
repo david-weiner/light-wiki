@@ -168,11 +168,10 @@ class ArticleScreen(sealedActivity: SealedLightActivity, private val title: Stri
         val margin = PageMargin.gridUnitsAsDp()
         LazyColumn(state = viewModel.listState, modifier = modifier) {
             item(key = "title") {
-                LightText(
-                    text = article.title,
-                    variant = LightTextVariant.Heading,
-                    modifier = Modifier.padding(start = margin, end = margin, bottom = 1f.gridUnitsAsDp()),
-                )
+                Column(modifier = Modifier.padding(start = margin, end = margin, bottom = 1f.gridUnitsAsDp())) {
+                    LightText(text = article.title, variant = LightTextVariant.Heading)
+                    LightText(text = "From Wikipedia, the free encyclopedia", variant = LightTextVariant.Detail, lighten = true)
+                }
             }
             items(article.blocks) { block ->
                 when (block) {
@@ -199,8 +198,21 @@ class ArticleScreen(sealedActivity: SealedLightActivity, private val title: Stri
                         RichText(spans = listOf(Span("•  ")))
                         RichText(spans = block.spans, modifier = Modifier.weight(1f))
                     }
-                    is Block.Image -> ImageRow(block)
+                    is Block.Image -> if (block.canShow) ImageRow(block)
                 }
+            }
+            item(key = "attribution") {
+                // Wikipedia's text is CC BY-SA 4.0, which requires credit, the license, a link to
+                // the source and a note that it was changed.
+                LightText(
+                    text = "This article is adapted from Wikipedia's \"${article.title}\": tables, references and " +
+                        "some formatting are left out. Text is available under the Creative Commons " +
+                        "Attribution-ShareAlike 4.0 License (creativecommons.org/licenses/by-sa/4.0). " +
+                        "For the authors and the full article, see ${wikipediaUrl(article.title)}",
+                    variant = LightTextVariant.Detail,
+                    lighten = true,
+                    modifier = Modifier.padding(start = margin, end = margin, top = 2f.gridUnitsAsDp(), bottom = 2f.gridUnitsAsDp()),
+                )
             }
         }
     }

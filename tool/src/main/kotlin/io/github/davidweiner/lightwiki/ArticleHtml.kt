@@ -60,6 +60,10 @@ object ArticleHtml {
         private var figure: FigureBuilder? = null
         private var leadImageTaken = false
 
+        // The file page ("File:Moon.jpg") the most recent image link points to. Images are
+        // wrapped in such a link, and the name is needed to look up the image's license.
+        private var fileLink: String? = null
+
         private var bold = 0
         private var italic = 0
         private val links = ArrayDeque<String?>()
@@ -74,10 +78,11 @@ object ArticleHtml {
             val tag = Tag(name, attrs["class"]?.split(' ')?.filter(String::isNotEmpty)?.toSet().orEmpty())
             val void = name in VOID_ELEMENTS
             if (!void) stack.addLast(tag)
+            if (name == "a") fileLink = fileLink(attrs)
             if (skipDepth >= 0) {
                 // Still pull the main picture out of the infobox before it is thrown away.
                 if (name == "img" && !leadImageTaken && blocks.isEmpty() && stack.any { "infobox" in it.classes }) {
-                    imageFrom(attrs)?.let { blocks += it; leadImageTaken = true }
+                    imageFrom(attrs, fileLink)?.let { blocks += it; leadImageTaken = true }
                 }
                 return
             }
@@ -111,7 +116,7 @@ object ArticleHtml {
                 "img" -> {
                     val fig = figure
                     when {
-                        fig != null && fig.image == null -> fig.image = imageFrom(attrs)
+                        fig != null && fig.image == null -> fig.image = imageFrom(attrs, fileLink)
                         // Formulas fall back to an image whose alt text is the formula itself.
                         attrs["class"]?.contains("mwe-math-fallback-image") == true ->
                             inline?.append(attrs["alt"].orEmpty(), bold > 0, italic > 0, links.lastOrNull())
@@ -202,7 +207,7 @@ object ArticleHtml {
     }
 
     /** Drops headings with nothing under them, e.g. sections that only held a table. */
-    private fun withoutEmptySections(blocks: List<Block>): List<Block> {
+    fun withoutEmptySections(blocks: List<Block>): List<Block> {
         val keep = BooleanArray(blocks.size) { true }
         for (i in blocks.indices.reversed()) {
             val heading = blocks[i] as? Block.Heading ?: continue
@@ -281,7 +286,15 @@ object ArticleHtml {
         return title
     }
 
-    private fun imageFrom(attrs: Map<String, String>): Block.Image? {
+    /** Returns "File:Name.jpg" for a link to an image's file page, otherwise null. */
+    private fun fileLink(attrs: Map<String, String>): String? {
+        val href = attrs["href"] ?: return null
+        if (!href.startsWith("/wiki/File:")) return null
+        return URLDecoder.decode(href.removePrefix("/wiki/").substringBefore('#').replace("+", "%2B"), "UTF-8")
+            .replace('_', ' ')
+    }
+
+    private fun imageFrom(attrs: Map<String, String>, file: String?): Block.Image? {
         val width = attrs["width"]?.toIntOrNull() ?: 0
         if (width in 1 until 100) return null // icons, flags and the like
         val src = attrs["src"] ?: return null
@@ -292,6 +305,7 @@ object ArticleHtml {
             largeUrl = large?.let(::absoluteUrl),
             caption = null,
             alt = attrs["alt"]?.collapseWhitespace()?.ifEmpty { null },
+            file = file,
         )
     }
 
