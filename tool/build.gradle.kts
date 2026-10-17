@@ -73,6 +73,12 @@ kotlin {
     }
 }
 
+ksp {
+    // Exported Room schemas let future database versions use @AutoMigration. They live under
+    // src/main because that is all Light's build server copies from the repo.
+    arg("room.schemaLocation", "$projectDir/src/main/assets/room-schemas")
+}
+
 dependencies {
     implementation(project(":sdk:client"))
     testImplementation(libs.kotlin.test)
