@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
 class ArticleViewModel(
     private val store: ArticleStore,
     private val requestedTitle: String,
-) : LightViewModel<Unit>() {
+) : LightViewModel<NewSearch>() {
     sealed interface State {
         data object Loading : State
         data class Loaded(val article: Article) : State
@@ -98,7 +98,7 @@ class ArticleViewModel(
         pendingJump.value = section.blockIndex + 1
     }
 
-    override fun onScreenHide(screen: SimpleLightScreen<Unit>) {
+    override fun onScreenHide(screen: SimpleLightScreen<NewSearch>) {
         super.onScreenHide(screen)
         saveScroll()
     }
@@ -115,7 +115,7 @@ class ArticleViewModel(
 }
 
 class ArticleScreen(sealedActivity: SealedLightActivity, private val title: String) :
-    LightScreen<Unit, ArticleViewModel>(sealedActivity) {
+    LightScreen<NewSearch, ArticleViewModel>(sealedActivity) {
 
     override val viewModelClass: Class<ArticleViewModel>
         get() = ArticleViewModel::class.java
@@ -123,7 +123,7 @@ class ArticleScreen(sealedActivity: SealedLightActivity, private val title: Stri
     override fun createViewModel() = ArticleViewModel(ArticleStore.get(lightContext), title)
 
     private fun openLink(target: String) {
-        navigateTo({ ArticleScreen(it, target) })
+        navigateTo({ ArticleScreen(it, target) }) { goBack(it) }
     }
 
     @Composable
@@ -139,7 +139,7 @@ class ArticleScreen(sealedActivity: SealedLightActivity, private val title: Stri
             }
         }
 
-        WikiPage(onBack = { goBack() }) {
+        WikiPage(onBack = { goBack() }, rightButton = newSearchButton { goBack(NewSearch) }) {
             when (val s = state) {
                 ArticleViewModel.State.Loading -> StatusMessage("Loading…")
                 is ArticleViewModel.State.Failed -> StatusMessage(s.message)

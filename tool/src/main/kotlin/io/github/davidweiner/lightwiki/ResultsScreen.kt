@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class ResultsViewModel(private val query: String) : LightViewModel<Unit>() {
+class ResultsViewModel(private val query: String) : LightViewModel<NewSearch>() {
     sealed interface State {
         data object Loading : State
         data class Loaded(val results: List<SearchResult>) : State
@@ -41,7 +41,7 @@ class ResultsViewModel(private val query: String) : LightViewModel<Unit>() {
 }
 
 class ResultsScreen(sealedActivity: SealedLightActivity, private val query: String) :
-    LightScreen<Unit, ResultsViewModel>(sealedActivity) {
+    LightScreen<NewSearch, ResultsViewModel>(sealedActivity) {
 
     override val viewModelClass: Class<ResultsViewModel>
         get() = ResultsViewModel::class.java
@@ -52,7 +52,7 @@ class ResultsScreen(sealedActivity: SealedLightActivity, private val query: Stri
     override fun Content() {
         val state by viewModel.state.collectAsState()
 
-        WikiPage(title = query, onBack = { goBack() }) {
+        WikiPage(title = query, onBack = { goBack() }, rightButton = newSearchButton { goBack(NewSearch) }) {
             when (val s = state) {
                 ResultsViewModel.State.Loading -> StatusMessage("Searching…")
                 is ResultsViewModel.State.Failed -> StatusMessage(s.message)
@@ -75,7 +75,7 @@ class ResultsScreen(sealedActivity: SealedLightActivity, private val query: Stri
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .lightClickable { navigateTo({ ArticleScreen(it, result.title) }) }
+                .lightClickable { navigateTo({ ArticleScreen(it, result.title) }) { goBack(it) } }
                 .padding(horizontal = PageMargin.gridUnitsAsDp(), vertical = 0.75f.gridUnitsAsDp())
         ) {
             LightText(

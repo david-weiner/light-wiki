@@ -64,12 +64,12 @@ class HomeScreen(sealedActivity: SealedLightActivity) :
 
     private fun openSearch() {
         navigateTo(::SearchInputScreen) { query ->
-            navigateTo({ ResultsScreen(it, query) })
+            navigateTo({ ResultsScreen(it, query) }) { openSearch() }
         }
     }
 
     private fun openArticle(title: String) {
-        navigateTo({ ArticleScreen(it, title) })
+        navigateTo({ ArticleScreen(it, title) }) { openSearch() }
     }
 
     @Composable

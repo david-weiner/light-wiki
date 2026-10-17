@@ -21,6 +21,16 @@ import com.thelightphone.sdk.ui.LightTopBar
 import com.thelightphone.sdk.ui.LightTopBarCenter
 import com.thelightphone.sdk.ui.gridUnitsAsDp
 
+/**
+ * Handed back down the screen stack (article → article → … → home) when the user taps the
+ * search icon, so every screen in between closes and home opens a new search.
+ */
+data object NewSearch
+
+/** Top-bar button on reading screens that starts over with a new search. */
+fun newSearchButton(onClick: () -> Unit) =
+    LightBarButton.LightIcon(icon = LightIcons.SEARCH, onClick = onClick, contentDescription = "New search")
+
 /** Horizontal margin used by every screen's content. */
 val PageMargin = 1.5f
 

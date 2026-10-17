@@ -12,7 +12,8 @@ A simple, distraction-free Wikipedia reader built as a LightOS tool.
 
 - **Search** English Wikipedia with the LightOS keyboard.
 - **Read** articles as clean text: references, tables and navigation boxes are left out.
-- **Follow links** to other articles; back returns you to where you were.
+- **Follow links** to other articles; back returns you to where you were. The search icon in the
+  top corner skips all the way back and starts a new search.
 - **View images** full screen on request (pinch to zoom, double-tap to reset). Images aren't shown inline.
 - **Contents** jumps to any section of a long article.
 - **Read offline:** every article you open is stored on the phone. Save the ones you want to keep;
